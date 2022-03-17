@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -18,20 +17,9 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
 		var loginInput LoginInput
-		err := core.DecodeJSONBody(w, r, &loginInput)
+		err := core.ParsePostBody(w, r, &loginInput)
 		if err != nil {
-			var errorResponse *core.Response
-			if errors.As(err, &errorResponse) {
-				responseBytes, err := json.Marshal(errorResponse)
-				if err != nil {
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				} else {
-					core.SendResponse(w, responseBytes, errorResponse.Status)
-				}
-			} else {
-				log.Println(err.Error())
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			}
+			log.Println(err.Error())
 			return
 		}
 
@@ -44,11 +32,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		core.SendResponse(w, responseString, http.StatusOK)
 	default:
-		response := core.Response{Status: http.StatusMethodNotAllowed, Message: http.StatusText(http.StatusMethodNotAllowed)}
-		responseBytes, err := json.Marshal(response)
-		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
-		core.SendResponse(w, responseBytes, http.StatusMethodNotAllowed)
+		core.SendMethodNotAllowed(w)
 	}
 }

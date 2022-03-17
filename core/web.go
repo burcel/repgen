@@ -77,8 +77,44 @@ func DecodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 	return nil
 }
 
+func ParsePostBody(w http.ResponseWriter, r *http.Request, dst interface{}) error {
+	err := DecodeJSONBody(w, r, dst)
+	if err != nil {
+		var errorResponse *Response
+		if errors.As(err, &errorResponse) {
+			responseBytes, err := json.Marshal(errorResponse)
+			if err != nil {
+				SendInternalServerError(w)
+			} else {
+				SendResponse(w, responseBytes, errorResponse.Status)
+			}
+		} else {
+			SendInternalServerError(w)
+		}
+	}
+	return err
+}
+
 func SendResponse(w http.ResponseWriter, response []byte, httpStatusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(httpStatusCode)
 	w.Write(response)
+}
+
+func SendMethodNotAllowed(w http.ResponseWriter) {
+	response := Response{Status: http.StatusMethodNotAllowed, Message: http.StatusText(http.StatusMethodNotAllowed)}
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+	SendResponse(w, responseBytes, http.StatusMethodNotAllowed)
+}
+
+func SendInternalServerError(w http.ResponseWriter) {
+	response := Response{Status: http.StatusInternalServerError, Message: http.StatusText(http.StatusMethodNotAllowed)}
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+	SendResponse(w, responseBytes, http.StatusMethodNotAllowed)
 }
