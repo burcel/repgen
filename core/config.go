@@ -2,6 +2,7 @@ package core
 
 import (
 	"io/ioutil"
+	"log"
 
 	"gopkg.in/yaml.v2"
 )
@@ -18,11 +19,13 @@ type ConfigBase struct {
 	} `yaml:"server"`
 	// PostgreSQL database config
 	Postgresql struct {
-		Host     string `yaml:"host"`
-		Port     string `yaml:"port"`
-		User     string `yaml:"user"`
-		Password string `yaml:"password"`
-		Database string `yaml:"database"`
+		Host               string `yaml:"host"`
+		Port               string `yaml:"port"`
+		User               string `yaml:"user"`
+		Password           string `yaml:"password"`
+		Database           string `yaml:"database"`
+		MaxIdleConnections int    `yaml:"max_idle_conns"`
+		MaxOpenConnections int    `yaml:"max_open_conns"`
 	} `yaml:"postgresql"`
 }
 
@@ -39,4 +42,5 @@ func InitializeConfig() {
 	if err != nil {
 		panic(err)
 	}
+	log.Printf("Backend version: %s", Config.Version)
 }

@@ -8,3 +8,5 @@ postgresql:
   user: "burakc"
   password: "burakc"
   database: "repgen"
+  max_idle_conns: 5
+  max_open_conns: 10
