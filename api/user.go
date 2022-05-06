@@ -7,37 +7,37 @@ import (
 	"net/http"
 	"repgen/controller"
 	"repgen/core"
+	"time"
 )
 
-type LoginInput struct {
+type UserCreateInput struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	Name     string `json:"name"`
 }
 
-func LoginHandler(w http.ResponseWriter, r *http.Request) {
+func UserCreateHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		var loginInput LoginInput
-		err := core.ParsePostBody(w, r, &loginInput)
+		var userInput UserCreateInput
+		err := core.ParsePostBody(w, r, &userInput)
 		if err != nil {
 			log.Println(err.Error())
 			return
 		}
 
-		fmt.Printf("%+v\n", loginInput)
+		fmt.Printf("%+v\n", userInput)
 
-		var user *controller.Users
-		user, err = controller.GetUsersByEmail(loginInput.Email)
+		user := controller.Users{Email: userInput.Email, Password: userInput.Password, Name: userInput.Name, Created: time.Now().UTC()}
+		err = controller.CreateUsers(&user)
 		if err != nil {
 			log.Println(err.Error())
 			return
-		} else if user == nil {
-			log.Println("No user")
 		} else {
-			fmt.Printf("%s\n", user.Email)
+			fmt.Printf("id: %d\n", user.Id)
 		}
 
-		responseString, err := json.Marshal(loginInput)
+		responseString, err := json.Marshal(user)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

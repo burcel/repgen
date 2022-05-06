@@ -13,7 +13,8 @@ var Database *sql.DB
 
 func InitializeDatabase() {
 	// Create connection
-	Database, err := sql.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s", Config.Postgresql.User,
+	var err error
+	Database, err = sql.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s", Config.Postgresql.User,
 		Config.Postgresql.Password, Config.Postgresql.Host, Config.Postgresql.Port, Config.Postgresql.Database))
 	if err != nil {
 		panic(err)
