@@ -14,7 +14,7 @@ func main() {
 	core.InitializeConfig()
 	// Initialize database
 	core.InitializeDatabase()
-
+	// Start server
 	mux := http.NewServeMux()
 	mux.HandleFunc("/login", api.LoginHandler)
 	mux.HandleFunc("/user/create", api.UserCreateHandler)

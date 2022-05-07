@@ -1,12 +1,11 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"repgen/controller"
-	"repgen/core"
+	"repgen/web"
 )
 
 type LoginInput struct {
@@ -18,7 +17,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
 		var loginInput LoginInput
-		err := core.ParsePostBody(w, r, &loginInput)
+		err := web.ParsePostBody(w, r, &loginInput)
 		if err != nil {
 			log.Println(err.Error())
 			return
@@ -37,13 +36,9 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("%s\n", user.Email)
 		}
 
-		responseString, err := json.Marshal(loginInput)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		core.SendResponse(w, responseString, http.StatusOK)
+		response := web.Response{Status: http.StatusOK, Message: "Successfully logged in."}
+		web.SendJsonResponse(w, response, http.StatusOK)
 	default:
-		core.SendMethodNotAllowed(w)
+		web.SendHttpMethod(w, http.StatusMethodNotAllowed)
 	}
 }
