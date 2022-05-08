@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/mail"
 	"repgen/controller"
+	"repgen/security"
 	"repgen/web"
 	"strings"
 	"time"
@@ -24,7 +25,7 @@ func UserCreateHandler(w http.ResponseWriter, r *http.Request) {
 		var userInput UserCreateInput
 		err := web.ParsePostBody(w, r, &userInput)
 		if err != nil {
-			log.Printf("{UserCreateHandler}: %s\n", err.Error())
+			log.Printf("{UserCreateHandler} ERR: %s\n", err.Error())
 			return
 		}
 		// Validate email
@@ -69,13 +70,18 @@ func UserCreateHandler(w http.ResponseWriter, r *http.Request) {
 			web.SendJsonResponse(w, response, http.StatusBadRequest)
 			return
 		}
-		// Hash password
-
+		// Hash user password
+		hashedPassword, err := security.GenerateHashFromPassword(userInput.Password)
+		if err != nil {
+			log.Printf("{UserCreateHandler} ERR: %s\n", err.Error())
+			web.SendHttpMethod(w, http.StatusInternalServerError)
+			return
+		}
 		// Register user
-		user := controller.Users{Email: userInput.Email, Password: userInput.Password, Name: userInput.Name, Created: time.Now().UTC()}
+		user := controller.Users{Email: userInput.Email, Password: hashedPassword, Name: userInput.Name, Created: time.Now().UTC()}
 		err = controller.CreateUsers(&user)
 		if err != nil {
-			log.Printf("{UserCreateHandler}: %s\n", err.Error())
+			log.Printf("{UserCreateHandler} ERR: %s\n", err.Error())
 			// Check uniqueness of the email
 			if strings.Contains(err.Error(), "(SQLSTATE 23505)") {
 				response := web.Response{Message: "Email already exists."}
