@@ -39,13 +39,13 @@ func GetUsersByEmail(email string) (*Users, error) {
 	}
 	defer rows.Close()
 
-	var user Users
+	var user *Users
 	for rows.Next() {
+		user = &Users{}
 		err := rows.Scan(&user.Id, &user.Email, &user.Password, &user.Name, &user.Created)
 		if err != nil {
 			return nil, err
 		}
-
 	}
-	return &user, nil
+	return user, nil
 }

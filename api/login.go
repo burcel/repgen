@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/mail"
 	"repgen/controller"
+	"repgen/security"
 	"repgen/web"
 )
 
@@ -16,28 +18,69 @@ type LoginInput struct {
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
+		// Parse input
 		var loginInput LoginInput
 		err := web.ParsePostBody(w, r, &loginInput)
 		if err != nil {
-			log.Println(err.Error())
+			log.Printf("{LoginHandler} ERR: %s\n", err.Error())
 			return
 		}
-
-		fmt.Printf("%+v\n", loginInput)
-
-		var user *controller.Users
-		user, err = controller.GetUsersByEmail(loginInput.Email)
+		// Validate email
+		maxEmailLength := 100
+		if len(loginInput.Email) == 0 {
+			response := web.Response{Message: "Field cannot be empty: email"}
+			web.SendJsonResponse(w, response, http.StatusBadRequest)
+			return
+		}
+		if len(loginInput.Email) > maxEmailLength {
+			response := web.Response{Message: fmt.Sprintf("Field is too long: email, max length: %d", maxEmailLength)}
+			web.SendJsonResponse(w, response, http.StatusBadRequest)
+			return
+		}
+		_, err = mail.ParseAddress(loginInput.Email)
 		if err != nil {
-			log.Println(err.Error())
+			response := web.Response{Message: "Email is not valid."}
+			web.SendJsonResponse(w, response, http.StatusBadRequest)
+			return
+		}
+		// Validate password
+		maxPasswordLength := 20
+		if len(loginInput.Password) == 0 {
+			response := web.Response{Message: "Field cannot be empty: password"}
+			web.SendJsonResponse(w, response, http.StatusBadRequest)
+			return
+		}
+		if len(loginInput.Password) > maxPasswordLength {
+			response := web.Response{Message: fmt.Sprintf("Field is too long: password, max length: %d", maxPasswordLength)}
+			web.SendJsonResponse(w, response, http.StatusBadRequest)
+			return
+		}
+		// Fetch user by email
+		user, err := controller.GetUsersByEmail(loginInput.Email)
+		if err != nil {
+			log.Printf("{LoginHandler} ERR: %s\n", err.Error())
+			web.SendHttpMethod(w, http.StatusInternalServerError)
 			return
 		} else if user == nil {
-			log.Println("No user")
-		} else {
-			fmt.Printf("%s\n", user.Email)
+			response := web.Response{Message: "Invalid email/password."}
+			web.SendJsonResponse(w, response, http.StatusNotFound)
+			return
 		}
-
-		response := web.Response{Status: http.StatusOK, Message: "Successfully logged in."}
-		web.SendJsonResponse(w, response, http.StatusOK)
+		// Check password
+		match, err := security.ComparePasswordAndHash(loginInput.Password, user.Password)
+		if err != nil {
+			log.Printf("{LoginHandler} ERR: %s\n", err.Error())
+			web.SendHttpMethod(w, http.StatusInternalServerError)
+			return
+		} else if !match {
+			response := web.Response{Message: "Invalid email/password."}
+			web.SendJsonResponse(w, response, http.StatusNotFound)
+			return
+		} else {
+			// TODO: create session and send cookie
+			response := web.Response{Status: http.StatusOK, Message: "User is logged in."}
+			web.SendJsonResponse(w, response, http.StatusOK)
+		}
 	default:
 		web.SendHttpMethod(w, http.StatusMethodNotAllowed)
 	}
