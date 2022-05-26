@@ -131,3 +131,50 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		web.SendHttpMethod(w, http.StatusMethodNotAllowed)
 	}
 }
+
+func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "POST":
+		// Parse session token from cookie
+		sessionCookie, err := r.Cookie(web.CookieKeySession)
+		if err != nil {
+			// Token does not exist in cookie
+			response := web.Response{Message: "Invalid authentication!"}
+			web.SendJsonResponse(w, response, http.StatusUnauthorized)
+			return
+		}
+		// If there exists a cookie -> Check validity
+		if sessionCookie != nil {
+			userSession, err := controller.GetUserSession(sessionCookie.Value)
+			if err != nil {
+				log.Printf("{LogoutHandler} ERR: %s\n", err.Error())
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+				return
+			}
+			if userSession == nil {
+				// Token does not exist in database
+				response := web.Response{Message: "Invalid authentication!"}
+				web.SendJsonResponse(w, response, http.StatusUnauthorized)
+				return
+			} else {
+				// Token exists -> Proceed to logout
+				err = controller.DeleteUserSession(userSession.Id)
+				if err != nil {
+					log.Printf("{LogoutHandler} ERR: %s\n", err.Error())
+					web.SendHttpMethod(w, http.StatusInternalServerError)
+					return
+				}
+				// Reset cookie
+				cookie := &http.Cookie{
+					Name:    web.CookieKeySession,
+					MaxAge:  -1,
+					Expires: time.Now().Add(-100 * time.Hour),
+					// HttpOnly: true,
+				}
+				http.SetCookie(w, cookie)
+			}
+		}
+	default:
+		web.SendHttpMethod(w, http.StatusMethodNotAllowed)
+	}
+}

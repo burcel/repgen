@@ -17,6 +17,7 @@ func main() {
 	// Start server
 	mux := http.NewServeMux()
 	mux.HandleFunc("/login", api.LoginHandler)
+	mux.HandleFunc("/logout", api.LogoutHandler)
 	mux.HandleFunc("/user/create", api.UserCreateHandler)
 	log.Println("Listening...")
 	http.ListenAndServe(":80", mux)
