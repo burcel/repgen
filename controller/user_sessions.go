@@ -32,7 +32,7 @@ func DeleteUserSession(id int) error {
 }
 
 func GetUserSession(session string) (*UserSession, error) {
-	rows, err := core.Database.Query("SELECT id, user_id, session, created FROM user_sessions WHERE session = $1", session)
+	rows, err := core.Database.Query("SELECT id, user_id, session, created FROM user_session WHERE session = $1", session)
 	if err != nil {
 		return nil, err
 	}

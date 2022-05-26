@@ -79,6 +79,28 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		} else {
 			// User & password is correct -> Proceed to session creation
+			// Parse session token from cookie
+			sessionCookie, err := r.Cookie(web.CookieKeySession)
+			// If there exists a cookie -> Check validity
+			if sessionCookie != nil {
+				userSession, err := controller.GetUserSession(sessionCookie.Value)
+				if err != nil {
+					log.Printf("{LoginHandler} ERR: %s\n", err.Error())
+					web.SendHttpMethod(w, http.StatusInternalServerError)
+					return
+				}
+				if userSession == nil {
+					// Token does not exist in database
+					response := web.Response{Message: "Invalid authentication!"}
+					web.SendJsonResponse(w, response, http.StatusUnauthorized)
+					return
+				} else {
+					// Token exists, no need to create a new one
+					response := web.Response{Status: http.StatusOK, Message: "User is already logged in."}
+					web.SendJsonResponse(w, response, http.StatusOK)
+					return
+				}
+			}
 			// Generate session token
 			session, err := security.GenerateRandomHex(web.CookieSessionLength)
 			if err != nil {
