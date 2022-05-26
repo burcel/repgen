@@ -14,7 +14,7 @@ type Users struct {
 }
 
 func CreateUsers(user *Users) error {
-	rows, err := core.Database.Query("INSERT INTO public.users (email, password, name, created) VALUES($1, $2, $3, $4) RETURNING id",
+	rows, err := core.Database.Query("INSERT INTO users (email, password, name, created) VALUES($1, $2, $3, $4) RETURNING id",
 		user.Email, user.Password, user.Name, user.Created)
 	if err != nil {
 		return err

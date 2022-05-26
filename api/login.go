@@ -8,6 +8,7 @@ import (
 	"repgen/controller"
 	"repgen/security"
 	"repgen/web"
+	"time"
 )
 
 type LoginInput struct {
@@ -77,7 +78,30 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			web.SendJsonResponse(w, response, http.StatusNotFound)
 			return
 		} else {
-			// TODO: create session and send cookie
+			// User & password is correct -> Proceed to session creation
+			// Generate session token
+			session, err := security.GenerateRandomHex(web.CookieSessionLength)
+			if err != nil {
+				log.Printf("{LoginHandler} ERR: %s\n", err.Error())
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+				return
+			}
+			// Register session to database with respect to user id
+			userSession := controller.UserSession{UserId: user.Id, Session: session, Created: time.Now().UTC()}
+			err = controller.CreateUserSession(userSession)
+			if err != nil {
+				log.Printf("{LoginHandler} ERR: %s\n", err.Error())
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+				return
+			}
+			// Append session to cookie
+			cookie := &http.Cookie{
+				Name:  web.CookieKeySession,
+				Value: session,
+				Path:  "/",
+				// HttpOnly: true,
+			}
+			http.SetCookie(w, cookie)
 			response := web.Response{Status: http.StatusOK, Message: "User is logged in."}
 			web.SendJsonResponse(w, response, http.StatusOK)
 		}
