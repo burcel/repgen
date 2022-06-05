@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -26,34 +27,16 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("{LoginHandler} ERR: %s\n", err.Error())
 			return
 		}
-		// Validate email
-		maxEmailLength := 100
-		if len(loginInput.Email) == 0 {
-			response := web.Response{Message: "Field cannot be empty: email"}
-			web.SendJsonResponse(w, response, http.StatusBadRequest)
-			return
-		}
-		if len(loginInput.Email) > maxEmailLength {
-			response := web.Response{Message: fmt.Sprintf("Field is too long: email, max length: %d", maxEmailLength)}
-			web.SendJsonResponse(w, response, http.StatusBadRequest)
-			return
-		}
-		_, err = mail.ParseAddress(loginInput.Email)
+		// Input validation
+		err = loginInputParser(loginInput)
 		if err != nil {
-			response := web.Response{Message: "Email is not valid."}
-			web.SendJsonResponse(w, response, http.StatusBadRequest)
-			return
-		}
-		// Validate password
-		maxPasswordLength := 20
-		if len(loginInput.Password) == 0 {
-			response := web.Response{Message: "Field cannot be empty: password"}
-			web.SendJsonResponse(w, response, http.StatusBadRequest)
-			return
-		}
-		if len(loginInput.Password) > maxPasswordLength {
-			response := web.Response{Message: fmt.Sprintf("Field is too long: password, max length: %d", maxPasswordLength)}
-			web.SendJsonResponse(w, response, http.StatusBadRequest)
+			log.Printf("{LoginHandler} ERR: %s\n", err.Error())
+			var response *web.Response
+			if errors.As(err, &response) {
+				web.SendJsonResponse(w, response, response.Status)
+			} else {
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+			}
 			return
 		}
 		// Fetch user by email
@@ -79,27 +62,25 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		} else {
 			// User & password is correct -> Proceed to session creation
+
 			// Parse session token from cookie
-			sessionCookie, err := r.Cookie(web.CookieKeySession)
-			// If there exists a cookie -> Check validity
-			if sessionCookie != nil {
-				userSession, err := controller.GetUserSession(sessionCookie.Value)
-				if err != nil {
-					log.Printf("{LoginHandler} ERR: %s\n", err.Error())
-					web.SendHttpMethod(w, http.StatusInternalServerError)
-					return
-				}
-				if userSession == nil {
-					// Token does not exist in database
-					response := web.Response{Message: "Invalid authentication!"}
-					web.SendJsonResponse(w, response, http.StatusUnauthorized)
-					return
+			userSessionCookie, err := web.ParseCookieSessionOptional(r)
+			if err != nil {
+				log.Printf("{LoginHandler} ERR: %s\n", err.Error())
+				var response *web.Response
+				if errors.As(err, &response) {
+					web.SendJsonResponse(w, response, response.Status)
 				} else {
-					// Token exists, no need to create a new one
-					response := web.Response{Status: http.StatusOK, Message: "User is already logged in."}
-					web.SendJsonResponse(w, response, http.StatusOK)
-					return
+					web.SendHttpMethod(w, http.StatusInternalServerError)
 				}
+				return
+			}
+			// Check if token exists
+			if userSessionCookie != nil {
+				// Token is valid; user is already logged in -> No need to create a new one
+				response := web.Response{Status: http.StatusOK, Message: "User is already logged in."}
+				web.SendJsonResponse(w, response, http.StatusOK)
+				return
 			}
 			// Generate session token
 			session, err := security.GenerateRandomHex(web.CookieSessionLength)
@@ -132,48 +113,69 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func loginInputParser(loginInput LoginInput) error {
+	// <email>
+	maxEmailLength := 100
+	if len(loginInput.Email) == 0 {
+		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be empty: email"}
+	}
+	if len(loginInput.Email) > maxEmailLength {
+		return &web.Response{
+			Status:  http.StatusBadRequest,
+			Message: fmt.Sprintf("Field is too long: email, max length: %d", maxEmailLength),
+		}
+	}
+	_, err := mail.ParseAddress(loginInput.Email)
+	if err != nil {
+		return &web.Response{Status: http.StatusBadRequest, Message: "Email is not valid."}
+	}
+	// <password>
+	maxPasswordLength := 20
+	if len(loginInput.Password) == 0 {
+		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be empty: password"}
+	}
+	if len(loginInput.Password) > maxPasswordLength {
+		return &web.Response{
+			Status:  http.StatusBadRequest,
+			Message: fmt.Sprintf("Field is too long: password, max length: %d", maxPasswordLength),
+		}
+	}
+	return nil
+}
+
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
 		// Parse session token from cookie
-		sessionCookie, err := r.Cookie(web.CookieKeySession)
+		userSession, err := web.ParseCookieSession(r)
 		if err != nil {
-			// Token does not exist in cookie
-			response := web.Response{Message: "Invalid authentication!"}
-			web.SendJsonResponse(w, response, http.StatusUnauthorized)
+			log.Printf("{LogoutHandler} ERR: %s\n", err.Error())
+			var response *web.Response
+			if errors.As(err, &response) {
+				web.SendJsonResponse(w, response, response.Status)
+			} else {
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+			}
 			return
 		}
-		// If there exists a cookie -> Check validity
-		if sessionCookie != nil {
-			userSession, err := controller.GetUserSession(sessionCookie.Value)
-			if err != nil {
-				log.Printf("{LogoutHandler} ERR: %s\n", err.Error())
-				web.SendHttpMethod(w, http.StatusInternalServerError)
-				return
-			}
-			if userSession == nil {
-				// Token does not exist in database
-				response := web.Response{Message: "Invalid authentication!"}
-				web.SendJsonResponse(w, response, http.StatusUnauthorized)
-				return
-			} else {
-				// Token exists -> Proceed to logout
-				err = controller.DeleteUserSession(userSession.Id)
-				if err != nil {
-					log.Printf("{LogoutHandler} ERR: %s\n", err.Error())
-					web.SendHttpMethod(w, http.StatusInternalServerError)
-					return
-				}
-				// Reset cookie
-				cookie := &http.Cookie{
-					Name:    web.CookieKeySession,
-					MaxAge:  -1,
-					Expires: time.Now().Add(-100 * time.Hour),
-					// HttpOnly: true,
-				}
-				http.SetCookie(w, cookie)
-			}
+		// Delete session from database
+		err = controller.DeleteUserSession(userSession.Id)
+		if err != nil {
+			log.Printf("{LogoutHandler} ERR: %s\n", err.Error())
+			web.SendHttpMethod(w, http.StatusInternalServerError)
+			return
 		}
+		// Reset cookie
+		cookie := &http.Cookie{
+			Name:    web.CookieKeySession,
+			Path:    "/",
+			MaxAge:  -1,
+			Expires: time.Now().Add(-100 * time.Hour),
+			// HttpOnly: true,
+		}
+		http.SetCookie(w, cookie)
+		response := web.Response{Status: http.StatusOK, Message: "User is logged out."}
+		web.SendJsonResponse(w, response, http.StatusOK)
 	default:
 		web.SendHttpMethod(w, http.StatusMethodNotAllowed)
 	}
