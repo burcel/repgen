@@ -19,6 +19,9 @@ func main() {
 	mux.HandleFunc("/login", api.LoginHandler)
 	mux.HandleFunc("/logout", api.LogoutHandler)
 	mux.HandleFunc("/user/create", api.UserCreateHandler)
+	mux.HandleFunc("/project/create", api.ProjectCreateHandler)
+	mux.HandleFunc("/project/edit", api.ProjectEditHandler)
+	mux.HandleFunc("/project/", api.ProjectSelectHandler)
 	log.Println("Listening...")
 	http.ListenAndServe(":80", mux)
 }
