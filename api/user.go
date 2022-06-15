@@ -30,7 +30,7 @@ func UserCreateHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Input validation
-		err = UserCreateInputParser(userInput)
+		err = userCreateInputParser(userInput)
 		if err != nil {
 			log.Printf("{UserCreateHandler} ERR: %s\n", err.Error())
 			var response *web.Response
@@ -69,7 +69,7 @@ func UserCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func UserCreateInputParser(userInput UserCreateInput) error {
+func userCreateInputParser(userInput UserCreateInput) error {
 	// <email>
 	maxEmailLength := 100
 	if len(userInput.Email) == 0 {

@@ -29,3 +29,18 @@ CREATE TABLE public.project (
 	CONSTRAINT project_un UNIQUE (name),
 	CONSTRAINT project_fk FOREIGN KEY (created_user_id) REFERENCES public.users(id)
 );
+
+
+CREATE TABLE public.report (
+	id int NOT NULL GENERATED ALWAYS AS IDENTITY,
+	project_id int NOT NULL,
+	"name" varchar NOT NULL,
+	"interval" int NOT NULL,
+	description varchar NULL,
+	created timestamp without time zone NOT NULL,
+	created_user_id int NOT NULL,
+	CONSTRAINT report_pk PRIMARY KEY (id),
+	CONSTRAINT report_fk FOREIGN KEY (project_id) REFERENCES public.project(id),
+	CONSTRAINT report_fk_1 FOREIGN KEY (created_user_id) REFERENCES public.users(id)
+);
+CREATE INDEX report_name_idx ON public.report ("name");
