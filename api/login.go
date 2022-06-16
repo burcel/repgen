@@ -115,14 +115,13 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 func loginInputParser(loginInput LoginInput) error {
 	// <email>
-	maxEmailLength := 100
 	if len(loginInput.Email) == 0 {
 		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be empty: email"}
 	}
-	if len(loginInput.Email) > maxEmailLength {
+	if len(loginInput.Email) > controller.UsersEmailMaxLength {
 		return &web.Response{
 			Status:  http.StatusBadRequest,
-			Message: fmt.Sprintf("Field is too long: email, max length: %d", maxEmailLength),
+			Message: fmt.Sprintf("Field is too long: email, max length: %d", controller.UsersEmailMaxLength),
 		}
 	}
 	_, err := mail.ParseAddress(loginInput.Email)
@@ -130,14 +129,13 @@ func loginInputParser(loginInput LoginInput) error {
 		return &web.Response{Status: http.StatusBadRequest, Message: "Email is not valid."}
 	}
 	// <password>
-	maxPasswordLength := 20
 	if len(loginInput.Password) == 0 {
 		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be empty: password"}
 	}
-	if len(loginInput.Password) > maxPasswordLength {
+	if len(loginInput.Password) > controller.UsersPasswordMaxLength {
 		return &web.Response{
 			Status:  http.StatusBadRequest,
-			Message: fmt.Sprintf("Field is too long: password, max length: %d", maxPasswordLength),
+			Message: fmt.Sprintf("Field is too long: password, max length: %d", controller.UsersPasswordMaxLength),
 		}
 	}
 	return nil

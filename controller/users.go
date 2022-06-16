@@ -13,6 +13,12 @@ type Users struct {
 	Created  time.Time
 }
 
+const (
+	UsersEmailMaxLength    = 100
+	UsersPasswordMaxLength = 20
+	UsersNameMaxLength     = 100
+)
+
 func CreateUsers(user *Users) error {
 	rows, err := core.Database.Query("INSERT INTO users (email, password, name, created) VALUES($1, $2, $3, $4) RETURNING id",
 		user.Email, user.Password, user.Name, user.Created)

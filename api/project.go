@@ -72,14 +72,13 @@ func ProjectCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 func projectCreateParser(projectCreateInput ProjectCreateInput) error {
 	// <name>
-	maxNameLength := 100
 	if len(projectCreateInput.Name) == 0 {
 		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be empty: name"}
 	}
-	if len(projectCreateInput.Name) > maxNameLength {
+	if len(projectCreateInput.Name) > controller.ProjectNameMaxLength {
 		return &web.Response{
 			Status:  http.StatusBadRequest,
-			Message: fmt.Sprintf("Field is too long: name, max length: %d", maxNameLength),
+			Message: fmt.Sprintf("Field is too long: name, max length: %d", controller.ProjectNameMaxLength),
 		}
 	}
 	return nil
@@ -154,14 +153,13 @@ func projectEditParser(projectEditInput ProjectEditInput) error {
 		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be lower than zero: id"}
 	}
 	// <name>
-	maxNameLength := 100
 	if len(projectEditInput.Name) == 0 {
 		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be empty: name"}
 	}
-	if len(projectEditInput.Name) > maxNameLength {
+	if len(projectEditInput.Name) > controller.ProjectNameMaxLength {
 		return &web.Response{
 			Status:  http.StatusBadRequest,
-			Message: fmt.Sprintf("Field is too long: name, max length: %d", maxNameLength),
+			Message: fmt.Sprintf("Field is too long: name, max length: %d", controller.ProjectNameMaxLength),
 		}
 	}
 	return nil

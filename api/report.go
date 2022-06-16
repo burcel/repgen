@@ -93,7 +93,7 @@ func reportCreateParser(reportCreateInput ReportCreateInput) error {
 		}
 	}
 	// <interval>
-	if reportCreateInput.Interval != 1 {
+	if _, ok := controller.ReportIntervalMap[reportCreateInput.Interval]; !ok {
 		return &web.Response{Status: http.StatusBadRequest, Message: "Field is invalid: interval"}
 	}
 	// <description>

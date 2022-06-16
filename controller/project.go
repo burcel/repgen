@@ -12,6 +12,8 @@ type Project struct {
 	CreatedUserId int
 }
 
+const ProjectNameMaxLength = 200
+
 func CreateProject(project *Project) error {
 	rows, err := core.Database.Query("INSERT INTO project (name, created, created_user_id) VALUES($1, $2, $3) RETURNING id",
 		project.Name, project.Created, project.CreatedUserId)
