@@ -7,15 +7,21 @@ import (
 	"net/http"
 	"repgen/controller"
 	"repgen/web"
-	"strings"
 	"time"
 )
 
 type ReportCreateInput struct {
-	ProjectId   int    `json:"project_id"`
-	Name        string `json:"name"`
-	Interval    int    `json:"interval"`
-	Description string `json:"description"`
+	ProjectId   int                     `json:"project_id"`
+	Name        string                  `json:"name"`
+	Interval    int                     `json:"interval"`
+	Description string                  `json:"description"`
+	Definition  []ReportDefinitionInput `json:"definition"`
+}
+
+type ReportDefinitionInput struct {
+	Name    string `json:"name"`
+	Type    int    `json:"type"`
+	Formula string `json:"formula"`
 }
 
 func ReportCreateHandler(w http.ResponseWriter, r *http.Request) {
@@ -52,7 +58,7 @@ func ReportCreateHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-		// Register project
+		// Create report
 		report := controller.Report{
 			ProjectId:     reportCreateInput.ProjectId,
 			Name:          reportCreateInput.Name,
@@ -61,20 +67,34 @@ func ReportCreateHandler(w http.ResponseWriter, r *http.Request) {
 			Created:       time.Now().UTC(),
 			CreatedUserId: userSession.UserId,
 		}
+		// Register report
 		err = controller.CreateReport(&report)
 		if err != nil {
 			log.Printf("{ReportCreateHandler} ERR: %s\n", err.Error())
-			// Check uniqueness of the name
-			if strings.Contains(err.Error(), "(SQLSTATE 23505)") {
-				response := web.Response{Message: "Project name already exists."}
-				web.SendJsonResponse(w, response, http.StatusNotAcceptable)
-			} else {
-				web.SendHttpMethod(w, http.StatusInternalServerError)
-			}
-		} else {
-			response := web.Response{Status: http.StatusOK, Message: "Report is created."}
-			web.SendJsonResponse(w, response, http.StatusOK)
+			web.SendHttpMethod(w, http.StatusInternalServerError)
+			return
 		}
+		// Create column definitions
+		values := make([]controller.ReportDefinition, len(reportCreateInput.Definition))
+		for index, column := range reportCreateInput.Definition {
+			values[index] = controller.ReportDefinition{
+				ReportId:      report.Id,
+				Name:          column.Name,
+				Type:          column.Type,
+				Formula:       column.Formula,
+				Created:       time.Now().UTC(),
+				CreatedUserId: userSession.UserId,
+			}
+		}
+		// Register column definitions
+		err = controller.CreateReportDefinition(values)
+		if err != nil {
+			log.Printf("{ReportCreateHandler} ERR: %s\n", err.Error())
+			web.SendHttpMethod(w, http.StatusInternalServerError)
+			return
+		}
+		response := web.Response{Status: http.StatusOK, Message: "Report is created."}
+		web.SendJsonResponse(w, response, http.StatusOK)
 	default:
 		web.SendHttpMethod(w, http.StatusMethodNotAllowed)
 	}
@@ -82,14 +102,13 @@ func ReportCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 func reportCreateParser(reportCreateInput ReportCreateInput) error {
 	// <name>
-	maxNameLength := 100
 	if len(reportCreateInput.Name) == 0 {
 		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be empty: name"}
 	}
-	if len(reportCreateInput.Name) > maxNameLength {
+	if len(reportCreateInput.Name) > controller.ReportNameMaxLength {
 		return &web.Response{
 			Status:  http.StatusBadRequest,
-			Message: fmt.Sprintf("Field is too long: name, max length: %d", maxNameLength),
+			Message: fmt.Sprintf("Field is too long: name, max length: %d", controller.ReportNameMaxLength),
 		}
 	}
 	// <interval>
@@ -97,12 +116,64 @@ func reportCreateParser(reportCreateInput ReportCreateInput) error {
 		return &web.Response{Status: http.StatusBadRequest, Message: "Field is invalid: interval"}
 	}
 	// <description>
-	maxDescriptionLength := 400
-	if len(reportCreateInput.Description) > maxDescriptionLength {
+	if len(reportCreateInput.Description) > controller.ReportDescriptionMaxLength {
 		return &web.Response{
 			Status:  http.StatusBadRequest,
-			Message: fmt.Sprintf("Field is too long: description, max length: %d", maxNameLength),
+			Message: fmt.Sprintf("Field is too long: description, max length: %d", controller.ReportDescriptionMaxLength),
 		}
 	}
+	// <definition>
+	if len(reportCreateInput.Definition) == 0 {
+		return &web.Response{
+			Status:  http.StatusBadRequest,
+			Message: "Field is empty: definition",
+		}
+	}
+	if len(reportCreateInput.Definition) > controller.ReportColumnMaxCount {
+		return &web.Response{
+			Status:  http.StatusBadRequest,
+			Message: fmt.Sprintf("Field is too many: definition, max count: %d", controller.ReportColumnMaxCount),
+		}
+	}
+	for index, column := range reportCreateInput.Definition {
+		// Column name
+		if len(column.Name) == 0 {
+			return &web.Response{
+				Status:  http.StatusBadRequest,
+				Message: fmt.Sprintf("Field cannot be empty: name at index %d", index+1),
+			}
+		}
+		if len(column.Name) > controller.ReportColumnNameMaxLength {
+			return &web.Response{
+				Status: http.StatusBadRequest,
+				Message: fmt.Sprintf("Field is too long: name at index %d, max length: %d",
+					index+1, controller.ReportColumnNameMaxLength),
+			}
+		}
+		// Column type
+		if _, ok := controller.ReportDefinitionTypeMap[column.Type]; !ok {
+			return &web.Response{
+				Status:  http.StatusBadRequest,
+				Message: fmt.Sprintf("Field is invalid: type at index %d", index+1),
+			}
+		}
+		// Column type -> Formula
+		if column.Type == controller.ReportColumnTypeFormula {
+			if len(column.Formula) == 0 {
+				return &web.Response{
+					Status:  http.StatusBadRequest,
+					Message: fmt.Sprintf("Field cannot be empty: formula at index %d", index+1),
+				}
+			}
+			if len(column.Formula) > controller.ReportColumnFormulaMaxLength {
+				return &web.Response{
+					Status: http.StatusBadRequest,
+					Message: fmt.Sprintf("Field is too long: formula at index %d, max length: %d",
+						index+1, controller.ReportColumnFormulaMaxLength),
+				}
+			}
+		}
+	}
+
 	return nil
 }

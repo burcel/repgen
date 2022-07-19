@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -33,4 +34,18 @@ func InitializeDatabase() {
 	Database.SetConnMaxIdleTime(1 * time.Minute)
 	// Connection Lifetime
 	Database.SetConnMaxLifetime(5 * time.Minute)
+}
+
+func PrepareQueryBulk(columnCount int, valueCount int) string {
+	index := 1
+	values := make([]string, valueCount)
+	for i := 0; i < valueCount; i++ {
+		columns := make([]string, columnCount)
+		for j := 0; j < columnCount; j++ {
+			columns[j] = fmt.Sprintf("$%d", index)
+			index++
+		}
+		values[i] = fmt.Sprintf("(%s)", strings.Join(columns, ","))
+	}
+	return strings.Join(values, ",")
 }

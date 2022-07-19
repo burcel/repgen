@@ -51,7 +51,7 @@ func DecodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 			return &Response{Status: http.StatusBadRequest, Message: msg}
 
 		case errors.As(err, &unmarshalTypeError):
-			msg := fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)",
+			msg := fmt.Sprintf("Request body contains an invalid value for the %s field (at position %d).",
 				unmarshalTypeError.Field, unmarshalTypeError.Offset)
 			return &Response{Status: http.StatusBadRequest, Message: msg}
 

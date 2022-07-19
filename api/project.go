@@ -187,7 +187,6 @@ func ProjectSelectHandler(w http.ResponseWriter, r *http.Request) {
 			web.SendHttpMethod(w, http.StatusInternalServerError)
 			return
 		}
-		fmt.Println("ProjectSelectHandler")
 		web.SendJsonResponse(w, projects, http.StatusOK)
 	default:
 		web.SendHttpMethod(w, http.StatusMethodNotAllowed)
