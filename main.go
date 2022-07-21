@@ -18,6 +18,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/login", api.LoginHandler)
 	mux.HandleFunc("/logout", api.LogoutHandler)
+	mux.HandleFunc("/logout/all", api.LogoutAllHandler)
 	mux.HandleFunc("/user/create", api.UserCreateHandler)
 	mux.HandleFunc("/project/create", api.ProjectCreateHandler)
 	mux.HandleFunc("/project/edit", api.ProjectEditHandler)

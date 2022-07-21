@@ -178,3 +178,41 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		web.SendHttpMethod(w, http.StatusMethodNotAllowed)
 	}
 }
+
+func LogoutAllHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "POST":
+		// Parse session token from cookie
+		userSession, err := web.ParseCookieSession(r)
+		if err != nil {
+			log.Printf("{LogoutHandler} ERR: %s\n", err.Error())
+			var response *web.Response
+			if errors.As(err, &response) {
+				web.SendJsonResponse(w, response, response.Status)
+			} else {
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+			}
+			return
+		}
+		// Delete all user sessions from database
+		err = controller.DeleteAllUserSessions(userSession.UserId)
+		if err != nil {
+			log.Printf("{LogoutHandler} ERR: %s\n", err.Error())
+			web.SendHttpMethod(w, http.StatusInternalServerError)
+			return
+		}
+		// Reset cookie
+		cookie := &http.Cookie{
+			Name:    web.CookieKeySession,
+			Path:    "/",
+			MaxAge:  -1,
+			Expires: time.Now().Add(-100 * time.Hour),
+			// HttpOnly: true,
+		}
+		http.SetCookie(w, cookie)
+		response := web.Response{Status: http.StatusOK, Message: "User is logged out from everywhere."}
+		web.SendJsonResponse(w, response, http.StatusOK)
+	default:
+		web.SendHttpMethod(w, http.StatusMethodNotAllowed)
+	}
+}

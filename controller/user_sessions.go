@@ -31,6 +31,15 @@ func DeleteUserSession(id int) error {
 	return nil
 }
 
+func DeleteAllUserSessions(userId int) error {
+	rows, err := core.Database.Query("DELETE FROM user_session WHERE user_id = $1", userId)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	return nil
+}
+
 func GetUserSession(session string) (*UserSession, error) {
 	rows, err := core.Database.Query("SELECT id, user_id, session, created FROM user_session WHERE session = $1", session)
 	if err != nil {
