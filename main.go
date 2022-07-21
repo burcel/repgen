@@ -20,6 +20,8 @@ func main() {
 	mux.HandleFunc("/logout", api.LogoutHandler)
 	mux.HandleFunc("/logout/all", api.LogoutAllHandler)
 	mux.HandleFunc("/user/create", api.UserCreateHandler)
+	mux.HandleFunc("/user/edit", api.UserEditHandler)
+	mux.HandleFunc("/user/password", api.UserChangePasswordHandler)
 	mux.HandleFunc("/project/create", api.ProjectCreateHandler)
 	mux.HandleFunc("/project/edit", api.ProjectEditHandler)
 	mux.HandleFunc("/project/", api.ProjectSelectHandler)

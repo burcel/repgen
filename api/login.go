@@ -40,7 +40,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Fetch user by email
-		user, err := controller.GetUsersByEmail(loginInput.Email)
+		user, err := controller.GetUserByEmail(loginInput.Email)
 		if err != nil {
 			log.Printf("{LoginHandler} ERR: %s\n", err.Error())
 			web.SendHttpMethod(w, http.StatusInternalServerError)
@@ -118,10 +118,10 @@ func loginInputParser(loginInput LoginInput) error {
 	if len(loginInput.Email) == 0 {
 		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be empty: email"}
 	}
-	if len(loginInput.Email) > controller.UsersEmailMaxLength {
+	if len(loginInput.Email) > controller.UserEmailMaxLength {
 		return &web.Response{
 			Status:  http.StatusBadRequest,
-			Message: fmt.Sprintf("Field is too long: email, max length: %d", controller.UsersEmailMaxLength),
+			Message: fmt.Sprintf("Field is too long: email, max length: %d", controller.UserEmailMaxLength),
 		}
 	}
 	_, err := mail.ParseAddress(loginInput.Email)
@@ -132,10 +132,10 @@ func loginInputParser(loginInput LoginInput) error {
 	if len(loginInput.Password) == 0 {
 		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be empty: password"}
 	}
-	if len(loginInput.Password) > controller.UsersPasswordMaxLength {
+	if len(loginInput.Password) > controller.UserPasswordMaxLength {
 		return &web.Response{
 			Status:  http.StatusBadRequest,
-			Message: fmt.Sprintf("Field is too long: password, max length: %d", controller.UsersPasswordMaxLength),
+			Message: fmt.Sprintf("Field is too long: password, max length: %d", controller.UserPasswordMaxLength),
 		}
 	}
 	return nil

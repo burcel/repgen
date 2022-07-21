@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type Users struct {
+type User struct {
 	Id       int
 	Email    string
 	Password string
@@ -14,12 +14,12 @@ type Users struct {
 }
 
 const (
-	UsersEmailMaxLength    = 100
-	UsersPasswordMaxLength = 20
-	UsersNameMaxLength     = 100
+	UserEmailMaxLength    = 100
+	UserPasswordMaxLength = 20
+	UserNameMaxLength     = 100
 )
 
-func CreateUsers(user *Users) error {
+func CreateUser(user *User) error {
 	rows, err := core.Database.Query("INSERT INTO users (email, password, name, created) VALUES($1, $2, $3, $4) RETURNING id",
 		user.Email, user.Password, user.Name, user.Created)
 	if err != nil {
@@ -34,20 +34,43 @@ func CreateUsers(user *Users) error {
 		}
 
 	}
-	// commit?
 	return nil
 }
 
-func GetUsersByEmail(email string) (*Users, error) {
+func UpdateUser(user User) (int64, error) {
+	result, err := core.Database.Exec("UPDATE users SET name = $1 WHERE id = $2", user.Name, user.Id)
+	if err != nil {
+		return 0, err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return rows, nil
+}
+
+func UpdateUserPassword(user User) (int64, error) {
+	result, err := core.Database.Exec("UPDATE users SET password = $1 WHERE id = $2", user.Password, user.Id)
+	if err != nil {
+		return 0, err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return rows, nil
+}
+
+func GetUserByEmail(email string) (*User, error) {
 	rows, err := core.Database.Query("SELECT id, email, password, name, created FROM users WHERE email = $1", email)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var user *Users
+	var user *User
 	for rows.Next() {
-		user = &Users{}
+		user = &User{}
 		err := rows.Scan(&user.Id, &user.Email, &user.Password, &user.Name, &user.Created)
 		if err != nil {
 			return nil, err
