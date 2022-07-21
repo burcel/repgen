@@ -36,3 +36,9 @@ After that, run the project by:
 
 # Features
 
+# TODO
+
+- Logout from all devices
+- User authorization on APIs
+- Report definition history (Create & Edit) (User, time, column name etc.)
+- Report data table index (report_date) performance

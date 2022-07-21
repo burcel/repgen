@@ -75,9 +75,9 @@ func ReportCreateHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Create column definitions
-		values := make([]controller.ReportDefinition, len(reportCreateInput.Definition))
+		report.Columns = make([]controller.ReportColumn, len(reportCreateInput.Definition))
 		for index, column := range reportCreateInput.Definition {
-			values[index] = controller.ReportDefinition{
+			report.Columns[index] = controller.ReportColumn{
 				ReportId:      report.Id,
 				Name:          column.Name,
 				Type:          column.Type,
@@ -87,12 +87,20 @@ func ReportCreateHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		// Register column definitions
-		err = controller.CreateReportDefinition(values)
+		err = controller.CreateReportColumns(report.Columns)
 		if err != nil {
 			log.Printf("{ReportCreateHandler} ERR: %s\n", err.Error())
 			web.SendHttpMethod(w, http.StatusInternalServerError)
 			return
 		}
+		// Create report data table with respect to columns
+		err = controller.CreateReportData(report)
+		if err != nil {
+			log.Printf("{ReportCreateHandler} ERR: %s\n", err.Error())
+			web.SendHttpMethod(w, http.StatusInternalServerError)
+			return
+		}
+
 		response := web.Response{Status: http.StatusOK, Message: "Report is created."}
 		web.SendJsonResponse(w, response, http.StatusOK)
 	default:
@@ -151,7 +159,7 @@ func reportCreateParser(reportCreateInput ReportCreateInput) error {
 			}
 		}
 		// Column type
-		if _, ok := controller.ReportDefinitionTypeMap[column.Type]; !ok {
+		if _, ok := controller.ReportColumnTypeMap[column.Type]; !ok {
 			return &web.Response{
 				Status:  http.StatusBadRequest,
 				Message: fmt.Sprintf("Field is invalid: type at index %d", index+1),

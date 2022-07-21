@@ -13,6 +13,7 @@ type Report struct {
 	Description   string
 	Created       time.Time
 	CreatedUserId int
+	Columns       []ReportColumn
 }
 
 const (
@@ -40,7 +41,6 @@ func CreateReport(report *Report) error {
 		return err
 	}
 	defer rows.Close()
-
 	for rows.Next() {
 		err := rows.Scan(&report.Id)
 		if err != nil {

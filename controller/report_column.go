@@ -3,10 +3,11 @@ package controller
 import (
 	"fmt"
 	"repgen/core"
+	"strings"
 	"time"
 )
 
-type ReportDefinition struct {
+type ReportColumn struct {
 	Id            int
 	ReportId      int
 	Name          string
@@ -26,28 +27,34 @@ const (
 	ReportColumnFormulaMaxLength = 200
 )
 
-var ReportDefinitionTypeMap = map[int]struct{}{
+var ReportColumnTypeMap = map[int]struct{}{
 	ReportColumnTypeStr:     emptyStruct,
 	ReportColumnTypeInt:     emptyStruct,
 	ReportColumnTypeFloat:   emptyStruct,
 	ReportColumnTypeFormula: emptyStruct,
 }
 
-func CreateReportDefinition(reportDefinition []ReportDefinition) error {
-	sql := fmt.Sprintf("INSERT INTO report_definition (report_id, name, type, formula, created, created_user_id) "+
-		"VALUES %s", core.PrepareQueryBulk(6, len(reportDefinition)))
-	stmt, err := core.Database.Prepare(sql)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
+func CreateReportColumns(reportColumns []ReportColumn) error {
+	columns := []string{"report_id", "name", "type", "formula", "created", "created_user_id"}
+	sql := fmt.Sprintf("INSERT INTO report_column (%s) VALUES %s RETURNING id",
+		strings.Join(columns, ","), core.PrepareQueryBulk(len(columns), len(reportColumns)))
+
 	values := []interface{}{}
-	for _, row := range reportDefinition {
+	for _, row := range reportColumns {
 		values = append(values, row.ReportId, row.Name, row.Type, row.Formula, row.Created, row.CreatedUserId)
 	}
-	_, err = stmt.Exec(values...)
+	rows, err := core.Database.Query(sql, values...)
 	if err != nil {
 		return err
+	}
+	defer rows.Close()
+	index := 0
+	for rows.Next() {
+		err := rows.Scan(&reportColumns[index].Id)
+		if err != nil {
+			return err
+		}
+		index++
 	}
 	return nil
 }

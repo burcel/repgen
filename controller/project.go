@@ -21,7 +21,6 @@ func CreateProject(project *Project) error {
 		return err
 	}
 	defer rows.Close()
-
 	for rows.Next() {
 		err := rows.Scan(&project.Id)
 		if err != nil {
@@ -32,8 +31,7 @@ func CreateProject(project *Project) error {
 }
 
 func UpdateProject(project *Project) (int64, error) {
-	result, err := core.Database.Exec("UPDATE project SET name = $1 WHERE id = $2",
-		project.Name, project.Id)
+	result, err := core.Database.Exec("UPDATE project SET name = $1 WHERE id = $2", project.Name, project.Id)
 	if err != nil {
 		return 0, err
 	}

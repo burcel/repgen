@@ -46,7 +46,7 @@ CREATE TABLE public.report (
 CREATE INDEX report_name_idx ON public.report ("name");
 
 
-CREATE TABLE public.report_definition (
+CREATE TABLE public.report_column (
 	id int NOT NULL GENERATED ALWAYS AS IDENTITY,
 	report_id int NOT NULL,
 	"name" varchar NOT NULL,
@@ -54,8 +54,8 @@ CREATE TABLE public.report_definition (
 	formula varchar NULL DEFAULT NULL,
 	created timestamp without time zone NOT NULL,
 	created_user_id int NOT NULL,
-	CONSTRAINT report_definition_pk PRIMARY KEY (id),
-	CONSTRAINT report_definition_fk FOREIGN KEY (report_id) REFERENCES public.report(id),
-	CONSTRAINT report_definition_fk_1 FOREIGN KEY (created_user_id) REFERENCES public.users(id)
+	CONSTRAINT report_column_pk PRIMARY KEY (id),
+	CONSTRAINT report_column_fk FOREIGN KEY (report_id) REFERENCES public.report(id),
+	CONSTRAINT report_column_fk_1 FOREIGN KEY (created_user_id) REFERENCES public.users(id)
 );
-CREATE INDEX report_definition_name_idx ON public.report_definition ("name");
+CREATE INDEX report_column_name_idx ON public.report_column ("name");
