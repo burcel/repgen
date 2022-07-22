@@ -143,6 +143,7 @@ func reportCreateParser(reportCreateInput ReportCreateInput) error {
 			Message: fmt.Sprintf("Field is too many: definition, max count: %d", controller.ReportColumnMaxCount),
 		}
 	}
+	columnNameMap := make(map[string]interface{})
 	for index, column := range reportCreateInput.Definition {
 		// Column name
 		if len(column.Name) == 0 {
@@ -158,6 +159,14 @@ func reportCreateParser(reportCreateInput ReportCreateInput) error {
 					index+1, controller.ReportColumnNameMaxLength),
 			}
 		}
+		// Duplicate control
+		if _, ok := columnNameMap[column.Name]; ok {
+			return &web.Response{
+				Status:  http.StatusBadRequest,
+				Message: fmt.Sprintf("Duplicate column name at index %d", index+1),
+			}
+		}
+		columnNameMap[column.Name] = nil
 		// Column type
 		if _, ok := controller.ReportColumnTypeMap[column.Type]; !ok {
 			return &web.Response{
