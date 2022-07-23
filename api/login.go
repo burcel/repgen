@@ -83,6 +83,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			// Generate session token
+			// Session duplicate control is skipped here -> Saved 1 query
 			session, err := security.GenerateRandomHex(web.CookieSessionLength)
 			if err != nil {
 				log.Printf("{LoginHandler} ERR: %s\n", err.Error())

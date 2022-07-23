@@ -38,7 +38,12 @@ After that, run the project by:
 
 # TODO
 
-- Logout from all devices
 - User authorization on APIs
-- Report definition history (Create & Edit) (User, time, column name etc.)
+- Report history (Create & Edit) (User, time, column name etc.)
+    - Report Creation
+    - Report Column create & edit
+    - Update token
 - Report data table index (report_date) performance
+- Update report token -> Invalidates every incoming report
+- Submit API
+    - 

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"repgen/controller"
+	"repgen/security"
 	"repgen/web"
 	"time"
 )
@@ -58,11 +59,32 @@ func ReportCreateHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
+		// Generate token
+		var token string
+		for {
+			token, err = security.GenerateRandomHex(web.CookieSessionLength)
+			if err != nil {
+				log.Printf("{ReportCreateHandler} ERR: %s\n", err.Error())
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+				return
+			}
+			tokenReport, err := controller.GetReportByToken(token)
+			if err != nil {
+				log.Printf("{ReportCreateHandler} ERR: %s\n", err.Error())
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+				return
+			}
+			if tokenReport == nil {
+				// Token does not exist in database
+				break
+			}
+		}
 		// Create report
 		report := controller.Report{
 			ProjectId:     reportCreateInput.ProjectId,
 			Name:          reportCreateInput.Name,
 			Interval:      reportCreateInput.Interval,
+			Token:         token,
 			Description:   reportCreateInput.Description,
 			Created:       time.Now().UTC(),
 			CreatedUserId: userSession.UserId,
@@ -143,7 +165,8 @@ func reportCreateParser(reportCreateInput ReportCreateInput) error {
 			Message: fmt.Sprintf("Field is too many: definition, max count: %d", controller.ReportColumnMaxCount),
 		}
 	}
-	columnNameMap := make(map[string]interface{})
+	var emptyStruct struct{}
+	columnNameMap := make(map[string]struct{})
 	for index, column := range reportCreateInput.Definition {
 		// Column name
 		if len(column.Name) == 0 {
@@ -166,7 +189,7 @@ func reportCreateParser(reportCreateInput ReportCreateInput) error {
 				Message: fmt.Sprintf("Duplicate column name at index %d", index+1),
 			}
 		}
-		columnNameMap[column.Name] = nil
+		columnNameMap[column.Name] = emptyStruct
 		// Column type
 		if _, ok := controller.ReportColumnTypeMap[column.Type]; !ok {
 			return &web.Response{

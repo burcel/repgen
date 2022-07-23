@@ -36,6 +36,7 @@ CREATE TABLE public.report (
 	project_id int NOT NULL,
 	"name" varchar NOT NULL,
 	"interval" int NOT NULL,
+	token varchar NOT NULL,
 	description varchar NULL,
 	created timestamp without time zone NOT NULL,
 	created_user_id int NOT NULL,
@@ -44,6 +45,7 @@ CREATE TABLE public.report (
 	CONSTRAINT report_fk_1 FOREIGN KEY (created_user_id) REFERENCES public.users(id)
 );
 CREATE INDEX report_name_idx ON public.report ("name");
+CREATE INDEX report_token_idx ON public.report (token);
 
 
 CREATE TABLE public.report_column (
