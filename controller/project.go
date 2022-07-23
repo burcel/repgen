@@ -6,13 +6,16 @@ import (
 )
 
 type Project struct {
-	Id            int
-	Name          string
-	Created       time.Time
-	CreatedUserId int
+	Id            int       `json:"id"`
+	Name          string    `json:"name"`
+	Created       time.Time `json:"created"`
+	CreatedUserId int       `json:"-"`
 }
 
-const ProjectNameMaxLength = 200
+const (
+	ProjectNameMaxLength = 200
+	ProjectPageLimit     = 10
+)
 
 func CreateProject(project *Project) error {
 	rows, err := core.Database.Query("INSERT INTO project (name, created, created_user_id) VALUES($1, $2, $3) RETURNING id",
@@ -42,8 +45,9 @@ func UpdateProject(project *Project) (int64, error) {
 	return rows, nil
 }
 
-func SelectProject() ([]Project, error) {
-	rows, err := core.Database.Query("SELECT id, name, created, created_user_id FROM project")
+func SelectProject(page int) ([]Project, error) {
+	rows, err := core.Database.Query("SELECT id, name, created, created_user_id FROM project ORDER BY id ASC LIMIT $1 OFFSET $2 ",
+		ProjectPageLimit, ProjectPageLimit*page)
 	if err != nil {
 		return nil, err
 	}

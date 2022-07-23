@@ -165,9 +165,13 @@ func projectEditParser(projectEditInput ProjectEditInput) error {
 	return nil
 }
 
+type ProjectSelectInput struct {
+	Page int `json:"page"`
+}
+
 func ProjectSelectHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
-	case "GET":
+	case "POST":
 		// Parse session token from cookie
 		_, err := web.ParseCookieSession(r)
 		if err != nil {
@@ -180,8 +184,27 @@ func ProjectSelectHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
+		// Parse input
+		var projectSelectInput ProjectSelectInput
+		err = web.ParsePostBody(w, r, &projectSelectInput)
+		if err != nil {
+			log.Printf("{ProjectSelectHandler} ERR: %s\n", err.Error())
+			return
+		}
+		// Input validation
+		err = projectSelectParser(projectSelectInput)
+		if err != nil {
+			log.Printf("{ProjectSelectHandler} ERR: %s\n", err.Error())
+			var response *web.Response
+			if errors.As(err, &response) {
+				web.SendJsonResponse(w, response, response.Status)
+			} else {
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+			}
+			return
+		}
 		// Select all projects
-		projects, err := controller.SelectProject()
+		projects, err := controller.SelectProject(projectSelectInput.Page)
 		if err != nil {
 			log.Printf("{ProjectSelectHandler} ERR: %s\n", err.Error())
 			web.SendHttpMethod(w, http.StatusInternalServerError)
@@ -191,4 +214,12 @@ func ProjectSelectHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		web.SendHttpMethod(w, http.StatusMethodNotAllowed)
 	}
+}
+
+func projectSelectParser(projectSelectInput ProjectSelectInput) error {
+	// <page>
+	if projectSelectInput.Page < 0 {
+		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be lower than zero: page"}
+	}
+	return nil
 }

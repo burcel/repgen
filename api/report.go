@@ -217,3 +217,63 @@ func reportCreateParser(reportCreateInput ReportCreateInput) error {
 
 	return nil
 }
+
+type ReportSelectInput struct {
+	ProjectId int `json:"project_id"`
+	Page      int `json:"page"`
+}
+
+func ReportSelectHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "POST":
+		// Parse session token from cookie
+		_, err := web.ParseCookieSession(r)
+		if err != nil {
+			log.Printf("{ReportSelectHandler} ERR: %s\n", err.Error())
+			var response *web.Response
+			if errors.As(err, &response) {
+				web.SendJsonResponse(w, response, response.Status)
+			} else {
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+			}
+			return
+		}
+		// Parse input
+		var reportSelectInput ReportSelectInput
+		err = web.ParsePostBody(w, r, &reportSelectInput)
+		if err != nil {
+			log.Printf("{ReportSelectHandler} ERR: %s\n", err.Error())
+			return
+		}
+		// Input validation
+		err = reportSelectParser(reportSelectInput)
+		if err != nil {
+			log.Printf("{ReportSelectHandler} ERR: %s\n", err.Error())
+			var response *web.Response
+			if errors.As(err, &response) {
+				web.SendJsonResponse(w, response, response.Status)
+			} else {
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+			}
+			return
+		}
+		// Select all projects
+		projects, err := controller.SelectReport(reportSelectInput.ProjectId, reportSelectInput.Page)
+		if err != nil {
+			log.Printf("{ReportSelectHandler} ERR: %s\n", err.Error())
+			web.SendHttpMethod(w, http.StatusInternalServerError)
+			return
+		}
+		web.SendJsonResponse(w, projects, http.StatusOK)
+	default:
+		web.SendHttpMethod(w, http.StatusMethodNotAllowed)
+	}
+}
+
+func reportSelectParser(reportSelectInput ReportSelectInput) error {
+	// <page>
+	if reportSelectInput.Page < 0 {
+		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be lower than zero: page"}
+	}
+	return nil
+}

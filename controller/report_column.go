@@ -58,3 +58,22 @@ func CreateReportColumns(reportColumns []ReportColumn) error {
 	}
 	return nil
 }
+
+func PopulateReportColumns(report *Report) error {
+	rows, err := core.Database.Query("SELECT id, report_id, name, type, formula, created, created_user_id "+
+		"FROM report_column WHERE report_id = $1", report.Id)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var reportColumn ReportColumn
+		err := rows.Scan(&reportColumn.Id, &reportColumn.ReportId, &reportColumn.Name, &reportColumn.Type,
+			&reportColumn.Formula, &reportColumn.Created, &reportColumn.CreatedUserId)
+		if err != nil {
+			return err
+		}
+		report.Columns = append(report.Columns, reportColumn)
+	}
+	return nil
+}

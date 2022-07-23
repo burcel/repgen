@@ -25,6 +25,7 @@ const (
 	ReportIntervalWeekly       = 1
 	ReportIntervalDaily        = 2
 	ReportIntervalHourly       = 3
+	ReportPageLimit            = 10
 )
 
 var emptyStruct struct{}
@@ -67,4 +68,26 @@ func GetReportByToken(token string) (report *Report, err error) {
 		}
 	}
 	return report, nil
+}
+
+func SelectReport(reportId int, page int) ([]Report, error) {
+	rows, err := core.Database.Query(
+		`SELECT id, project_id, name, interval, token, description, created, created_user_id FROM report 
+		WHERE project_id = $1 
+		ORDER BY id ASC LIMIT $2 OFFSET $3`,
+		reportId, ReportPageLimit, ReportPageLimit*page)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	reports := []Report{}
+	for rows.Next() {
+		var report Report
+		err := rows.Scan(&report.Id, &report.ProjectId, &report.Name, &report.Interval, &report.Token, &report.Description, &report.Created, &report.CreatedUserId)
+		if err != nil {
+			return nil, err
+		}
+		reports = append(reports, report)
+	}
+	return reports, nil
 }
