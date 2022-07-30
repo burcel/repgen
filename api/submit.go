@@ -6,7 +6,16 @@ import (
 	"net/http"
 	"repgen/controller"
 	"repgen/web"
+	"time"
 )
+
+var nilTime = (time.Time{}).UnixNano()
+var ReportIntervalDateFormatMap = map[int]string{
+	controller.ReportIntervalMonthly: "2006-01",
+	controller.ReportIntervalWeekly:  "2006-01-02",
+	controller.ReportIntervalDaily:   "2006-01-02",
+	controller.ReportIntervalHourly:  "2006-01-02 15",
+}
 
 type SubmitReportInput struct {
 	Token string                 `json:"token"`
@@ -17,21 +26,9 @@ type SubmitReportInput struct {
 func SubmitReportHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		// Parse session token from cookie
-		_, err := web.ParseCookieSession(r)
-		if err != nil {
-			log.Printf("{SubmitReportHandler} ERR: %s\n", err.Error())
-			var response *web.Response
-			if errors.As(err, &response) {
-				web.SendJsonResponse(w, response, response.Status)
-			} else {
-				web.SendHttpMethod(w, http.StatusInternalServerError)
-			}
-			return
-		}
 		// Parse input
 		var submitReportInput SubmitReportInput
-		err = web.ParsePostBody(w, r, &submitReportInput)
+		err := web.ParsePostBody(w, r, &submitReportInput)
 		if err != nil {
 			log.Printf("{SubmitReportHandler} ERR: %s\n", err.Error())
 			return
@@ -57,7 +54,34 @@ func SubmitReportHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		if report == nil {
 			response := web.Response{Status: http.StatusBadRequest, Message: "Invalid token."}
-			web.SendJsonResponse(w, response, http.StatusOK)
+			web.SendJsonResponse(w, response, response.Status)
+			return
+		}
+		// Fetch date format with respect to report interval
+		dateFormat, ok := ReportIntervalDateFormatMap[report.Interval]
+		if !ok {
+			log.Printf("{SubmitReportHandler} ERR: Report id %d has invalid interval %d\n", report.Id, report.Interval)
+			web.SendHttpMethod(w, http.StatusInternalServerError)
+			return
+		}
+		// Parse date
+		date, err := time.Parse(dateFormat, submitReportInput.Date)
+		if err != nil {
+			var parseError *time.ParseError
+			if errors.As(err, &parseError) {
+				response := web.Response{Status: http.StatusBadRequest, Message: "Invalid date."}
+				web.SendJsonResponse(w, response, response.Status)
+				return
+			} else {
+				log.Printf("{SubmitReportHandler} ERR: %s\n", err.Error())
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+				return
+			}
+		}
+		// Check if date is valid
+		if date.UnixNano() == nilTime {
+			response := web.Response{Status: http.StatusBadRequest, Message: "Invalid date."}
+			web.SendJsonResponse(w, response, response.Status)
 			return
 		}
 		// Fetch report columns
@@ -76,10 +100,14 @@ func SubmitReportHandler(w http.ResponseWriter, r *http.Request) {
 
 func SubmitReportParser(submitReportInput SubmitReportInput) error {
 	// <token>
-	if len(submitReportInput.Token) != controller.ReportTokenLength {
+	if len(submitReportInput.Token) != controller.ReportTokenLength*2 {
 		return &web.Response{Status: http.StatusBadRequest, Message: "Invalid field length: token"}
 	}
 	// <date>
+	if len(submitReportInput.Date) == 0 {
+		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be empty: date"}
+	}
 	// <data>
+
 	return nil
 }

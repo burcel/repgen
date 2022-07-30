@@ -62,7 +62,7 @@ func ReportCreateHandler(w http.ResponseWriter, r *http.Request) {
 		// Generate token
 		var token string
 		for {
-			token, err = security.GenerateRandomHex(web.CookieSessionLength)
+			token, err = security.GenerateRandomHex(controller.ReportTokenLength)
 			if err != nil {
 				log.Printf("{ReportCreateHandler} ERR: %s\n", err.Error())
 				web.SendHttpMethod(w, http.StatusInternalServerError)
