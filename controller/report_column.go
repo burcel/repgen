@@ -18,7 +18,6 @@ type ReportColumn struct {
 }
 
 const (
-	ReportColumnMaxCount         = 30
 	ReportColumnNameMaxLength    = 100
 	ReportColumnTypeStr          = 0
 	ReportColumnTypeInt          = 1

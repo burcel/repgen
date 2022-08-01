@@ -25,6 +25,7 @@ const (
 	ReportIntervalWeekly       = 1
 	ReportIntervalDaily        = 2
 	ReportIntervalHourly       = 3
+	ReportColumnMaxCount       = 30
 	ReportPageLimit            = 10
 )
 
