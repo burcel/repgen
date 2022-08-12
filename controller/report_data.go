@@ -10,8 +10,8 @@ import (
 type ReportData struct {
 	Id         int
 	ReportDate time.Time
-	Created    time.Time
-	ColumnMap  map[string]struct{}
+	SentDate   time.Time
+	ColumnMap  map[int]interface{}
 }
 
 const (
@@ -83,5 +83,9 @@ func CreateReportData(report Report) (err error) {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func InsertReportData(reportData *ReportData) error {
 	return nil
 }

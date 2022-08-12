@@ -37,7 +37,7 @@ func SubmitReportHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Input validation
-		err = SubmitReportParser(submitReportInput)
+		err = submitReportParser(submitReportInput)
 		if err != nil {
 			log.Printf("{SubmitReportHandler} ERR: %s\n", err.Error())
 			var response *web.Response
@@ -60,34 +60,18 @@ func SubmitReportHandler(w http.ResponseWriter, r *http.Request) {
 			web.SendJsonResponse(w, response, response.Status)
 			return
 		}
-		// Fetch date format with respect to report interval
-		dateFormat, ok := ReportIntervalDateFormatMap[report.Interval]
-		if !ok {
-			log.Printf("{SubmitReportHandler} ERR: Report id %d has invalid interval %d\n", report.Id, report.Interval)
-			web.SendHttpMethod(w, http.StatusInternalServerError)
-			return
-		}
-		// Parse date
-		date, err := time.Parse(dateFormat, submitReportInput.Date)
+		// Parse report date
+		date, err := submitReportDateParser(report, submitReportInput.Date)
 		if err != nil {
-			var parseError *time.ParseError
-			if errors.As(err, &parseError) {
-				response := web.Response{Status: http.StatusBadRequest, Message: "Invalid date."}
+			var response *web.Response
+			if errors.As(err, &response) {
 				web.SendJsonResponse(w, response, response.Status)
-				return
 			} else {
-				log.Printf("{SubmitReportHandler} ERR: %s\n", err.Error())
 				web.SendHttpMethod(w, http.StatusInternalServerError)
-				return
 			}
-		}
-		// Check if date is valid
-		if date.UnixNano() == nilTime {
-			response := web.Response{Status: http.StatusBadRequest, Message: "Invalid date."}
-			web.SendJsonResponse(w, response, response.Status)
 			return
 		}
-		// Fetch report columns
+		// Populate report columns
 		err = controller.PopulateReportColumns(report)
 		if err != nil {
 			log.Printf("{SubmitReportHandler} ERR: %s\n", err.Error())
@@ -95,7 +79,7 @@ func SubmitReportHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Validate columns
-		err = SubmitReportColumnParser(report, submitReportInput)
+		reportColumnIdValueMap, err := submitReportColumnParser(report, submitReportInput)
 		if err != nil {
 			log.Printf("{SubmitReportHandler} ERR: %s\n", err.Error())
 			var response *web.Response
@@ -107,7 +91,18 @@ func SubmitReportHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Record column values
-
+		reportData := controller.ReportData{
+			ReportDate: *date,
+			SentDate:   time.Now().UTC(),
+			ColumnMap:  reportColumnIdValueMap,
+		}
+		// Insert report data
+		err = controller.InsertReportData(&reportData)
+		if err != nil {
+			log.Printf("{SubmitReportHandler} ERR: %s\n", err.Error())
+			web.SendHttpMethod(w, http.StatusInternalServerError)
+			return
+		}
 		response := web.Response{Status: http.StatusOK, Message: "Report data is submitted."}
 		web.SendJsonResponse(w, response, http.StatusOK)
 	default:
@@ -115,7 +110,7 @@ func SubmitReportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func SubmitReportParser(submitReportInput SubmitReportInput) error {
+func submitReportParser(submitReportInput SubmitReportInput) error {
 	// <token>
 	if len(submitReportInput.Token) != controller.ReportTokenLength*2 {
 		return &web.Response{Status: http.StatusBadRequest, Message: "Invalid field length: token"}
@@ -134,62 +129,114 @@ func SubmitReportParser(submitReportInput SubmitReportInput) error {
 	return nil
 }
 
-func SubmitReportColumnParser(report *controller.Report, submitReportInput SubmitReportInput) error {
-	// Create Map: Column name -> Type
-	ReportColumnNameTypeMap := make(map[string]int)
+func submitReportDateParser(report *controller.Report, submitDate string) (*time.Time, error) {
+	// Fetch date format with respect to report interval
+	dateFormat, ok := ReportIntervalDateFormatMap[report.Interval]
+	if !ok {
+		log.Printf("{SubmitReportDateParser} ERR: Report id %d has invalid interval %d\n", report.Id, report.Interval)
+		response := &web.Response{
+			Status:  http.StatusInternalServerError,
+			Message: http.StatusText(http.StatusInternalServerError),
+		}
+		return nil, response
+	}
+	// Parse date
+	date, err := time.Parse(dateFormat, submitDate)
+	if err != nil {
+		var parseError *time.ParseError
+		if errors.As(err, &parseError) {
+			response := &web.Response{Status: http.StatusBadRequest, Message: "Invalid date."}
+			return nil, response
+		} else {
+			log.Printf("{SubmitReportDateParser} ERR: %s\n", err.Error())
+			response := &web.Response{
+				Status:  http.StatusInternalServerError,
+				Message: http.StatusText(http.StatusInternalServerError),
+			}
+			return nil, response
+		}
+	}
+	// Check if date is valid
+	if date.UnixNano() == nilTime {
+		response := &web.Response{Status: http.StatusBadRequest, Message: "Invalid date."}
+		return nil, response
+	}
+	return &date, nil
+}
+
+func submitReportColumnParser(report *controller.Report, submitReportInput SubmitReportInput) (map[int]interface{}, error) {
+	// Map: Column name -> Type
+	reportColumnNameTypeMap := make(map[string]int)
+	// Map: Column name -> Column id
+	reportColumnNameIdMap := make(map[string]int)
+	// Map: Column id -> Value
+	reportColumnIdValueMap := make(map[int]interface{})
 	for _, reportColumn := range report.Columns {
-		ReportColumnNameTypeMap[reportColumn.Name] = reportColumn.Type
+		reportColumnNameTypeMap[reportColumn.Name] = reportColumn.Type
+		reportColumnNameIdMap[reportColumn.Name] = reportColumn.Id
 	}
 	// Validate column types
 	for columnName, value := range submitReportInput.Data {
-		if columnType, ok := ReportColumnNameTypeMap[columnName]; ok {
+		if columnType, ok := reportColumnNameTypeMap[columnName]; ok {
 			switch columnType {
 			case controller.ReportColumnTypeStr:
 				if reflect.TypeOf(value).String() != "string" {
-					return &web.Response{
+					response := &web.Response{
 						Status:  http.StatusBadRequest,
 						Message: fmt.Sprintf("Invalid column type: %s", columnName),
 					}
+					return nil, response
 				}
 			case controller.ReportColumnTypeInt:
 				if reflect.TypeOf(value).String() != "float64" {
-					// Value can be cast to int here
-					return &web.Response{
+					response := &web.Response{
 						Status:  http.StatusBadRequest,
 						Message: fmt.Sprintf("Invalid column type: %s", columnName),
 					}
+					return nil, response
 				} else {
+					// Check if value is int or float i.e. 3.0 or 3
+					// -> Go serializes integer for empty interface as float64
 					if value != math.Trunc(value.(float64)) {
-						return &web.Response{
+						response := &web.Response{
 							Status:  http.StatusBadRequest,
 							Message: fmt.Sprintf("Invalid column type: %s", columnName),
 						}
+						return nil, response
 					}
 				}
 			case controller.ReportColumnTypeFloat:
 				if reflect.TypeOf(value).String() != "float64" {
-					return &web.Response{
+					response := &web.Response{
 						Status:  http.StatusBadRequest,
 						Message: fmt.Sprintf("Invalid column type: %s", columnName),
 					}
+					return nil, response
 				}
 			case controller.ReportColumnTypeFormula:
-				return &web.Response{
+				response := &web.Response{
 					Status:  http.StatusBadRequest,
 					Message: fmt.Sprintf("Data cannot be send to formula: %s", columnName),
 				}
+				return nil, response
 			default:
-				return &web.Response{
+				log.Printf("{submitReportColumnParser} ERR: Report id %d has invalid column type for: %s\n", report.Id, columnName)
+				response := &web.Response{
 					Status:  http.StatusInternalServerError,
 					Message: http.StatusText(http.StatusInternalServerError),
 				}
+				return nil, response
 			}
+			// Add value to map
+			columnId := reportColumnNameIdMap[columnName]
+			reportColumnIdValueMap[columnId] = value
 		} else {
-			return &web.Response{
+			response := &web.Response{
 				Status:  http.StatusBadRequest,
 				Message: fmt.Sprintf("Column does not exist: %s", columnName),
 			}
+			return nil, response
 		}
 	}
-	return nil
+	return reportColumnIdValueMap, nil
 }

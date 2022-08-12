@@ -38,6 +38,7 @@ After that, run the project by:
 
 # TODO
 
+- Logging
 - User authorization on APIs
 - Report history (Create & Edit) (User, time, column name etc.)
     - Report Creation
@@ -46,4 +47,7 @@ After that, run the project by:
 - Report data table index (report_date) performance
 - Update report token -> Invalidates every incoming report
 - Submit API
-    - 
+    - Find column id
+    - column id -> value map
+    - Find date with respect to report interval
+    - If date exists -> update; else insert
