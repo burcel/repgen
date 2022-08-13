@@ -97,7 +97,7 @@ func SubmitReportHandler(w http.ResponseWriter, r *http.Request) {
 			ColumnMap:  reportColumnIdValueMap,
 		}
 		// Insert report data
-		err = controller.InsertReportData(&reportData)
+		err = controller.InsertReportData(report.Id, &reportData)
 		if err != nil {
 			log.Printf("{SubmitReportHandler} ERR: %s\n", err.Error())
 			web.SendHttpMethod(w, http.StatusInternalServerError)

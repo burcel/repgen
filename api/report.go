@@ -116,7 +116,7 @@ func ReportCreateHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Create report data table with respect to columns
-		err = controller.CreateReportData(report)
+		err = controller.CreateReportDataTable(report)
 		if err != nil {
 			log.Printf("{ReportCreateHandler} ERR: %s\n", err.Error())
 			web.SendHttpMethod(w, http.StatusInternalServerError)

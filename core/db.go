@@ -36,6 +36,10 @@ func InitializeDatabase() {
 	Database.SetConnMaxLifetime(5 * time.Minute)
 }
 
+// columnCount: How many column value e.g. $1,$2 etc
+// valueCount: How many values e.g. (...), (...)
+// PrepareQueryBulk(3, 1) -> ($1,$2,$3)
+// PrepareQueryBulk(3, 2) -> ($1,$2,$3),($4,$5,$6)
 func PrepareQueryBulk(columnCount int, valueCount int) string {
 	index := 1
 	values := make([]string, valueCount)
