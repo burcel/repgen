@@ -83,7 +83,7 @@ func CreateReportDataTable(report Report) (err error) {
 		return err
 	}
 	// Index
-	sql = fmt.Sprintf("CREATE INDEX %s_idx ON %s USING brin(report_date)", tableName, tableName)
+	sql = fmt.Sprintf("CREATE UNIQUE INDEX %s_idx ON %s USING btree(report_date)", tableName, tableName)
 	stmt, err = core.Database.Prepare(sql)
 	if err != nil {
 		return err
@@ -97,16 +97,33 @@ func CreateReportDataTable(report Report) (err error) {
 }
 
 // TODO: report data should be updated if report dates coincide
+// Should index be unique? -> on conflict -> no brin index then
+// Currently, only B-tree indexes can be declared unique.
 func InsertReportData(reportId int, reportData *ReportData) error {
 	// Prepare query columns and values
-	columns := []string{"report_date", "sent_date"}
-	values := []interface{}{reportData.ReportDate, reportData.SentDate}
+	columns := []string{"sent_date"}
+	values := []interface{}{reportData.SentDate}
 	for key, value := range reportData.ColumnMap {
 		columns = append(columns, ReturnReportColumnName(key))
 		values = append(values, value)
 	}
-	sql := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s RETURNING id",
-		ReturnReportTableName(reportId), strings.Join(columns, ","), core.PrepareQueryBulk(len(columns), 1))
+	// Make values copy for update values
+	valuesUpdate := make([]interface{}, len(values))
+	copy(valuesUpdate, values)
+	// Prepare update part of the query
+	updateSql := core.PrepareQueryBulkUpdate(columns, len(columns)+2)
+	// Add report date to insert part of the query
+	columns = append(columns, "report_date")
+	values = append(values, reportData.ReportDate)
+	// Add update values to overall value slice
+	values = append(values, valuesUpdate...)
+	sql := fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES %s ON CONFLICT (report_date) DO UPDATE SET %s RETURNING id",
+		ReturnReportTableName(reportId),
+		strings.Join(columns, ","),
+		core.PrepareQueryBulk(len(columns), 1),
+		updateSql,
+	)
 	rows, err := core.Database.Query(sql, values...)
 	if err != nil {
 		return err

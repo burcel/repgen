@@ -53,3 +53,15 @@ func PrepareQueryBulk(columnCount int, valueCount int) string {
 	}
 	return strings.Join(values, ",")
 }
+
+// columns: column names
+// startingIndex: starting index for parameter
+// PrepareQueryBulkUpdate(["x1", "x2"], 3) -> x1=$3,x2=$4
+// PrepareQueryBulkUpdate(["a", "b", "c"], 7) -> a=$7,b=$8,c=$9
+func PrepareQueryBulkUpdate(columns []string, startingIndex int) string {
+	columnSql := make([]string, len(columns))
+	for index, value := range columns {
+		columnSql[index] = fmt.Sprintf("%s=$%d", value, index+startingIndex)
+	}
+	return strings.Join(columnSql, ",")
+}
