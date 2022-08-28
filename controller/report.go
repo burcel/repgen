@@ -92,3 +92,15 @@ func SelectReport(reportId int, page int) ([]Report, error) {
 	}
 	return reports, nil
 }
+
+func UpdateReportToken(report Report) (int64, error) {
+	result, err := core.Database.Exec("UPDATE report SET token=$1 WHERE id=$2", report.Token, report.Id)
+	if err != nil {
+		return 0, err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return rows, nil
+}

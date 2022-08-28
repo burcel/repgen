@@ -153,7 +153,7 @@ func UserEditHandler(w http.ResponseWriter, r *http.Request) {
 			web.SendHttpMethod(w, http.StatusInternalServerError)
 		} else if rows != 1 {
 			log.Printf("{UserEditHandler} ERR: Update failed for user id: %d\n", user.Id)
-			web.SendHttpMethod(w, http.StatusInternalServerError)
+			web.SendHttpMethod(w, http.StatusBadRequest)
 		} else {
 			response := web.Response{Message: "User is updated."}
 			web.SendJsonResponse(w, response, http.StatusOK)
@@ -228,7 +228,7 @@ func UserChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
 			web.SendHttpMethod(w, http.StatusInternalServerError)
 		} else if rows != 1 {
 			log.Printf("{UserChangePasswordHandler} ERR: Update failed for user id: %d\n", user.Id)
-			web.SendHttpMethod(w, http.StatusInternalServerError)
+			web.SendHttpMethod(w, http.StatusBadRequest)
 		} else {
 			response := web.Response{Message: "User is updated."}
 			web.SendJsonResponse(w, response, http.StatusOK)

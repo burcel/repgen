@@ -26,6 +26,7 @@ func main() {
 	mux.HandleFunc("/project/edit", api.ProjectEditHandler)
 	mux.HandleFunc("/project/", api.ProjectSelectHandler)
 	mux.HandleFunc("/report/create", api.ReportCreateHandler)
+	mux.HandleFunc("/report/refresh", api.ReportRefreshTokenHandler)
 	mux.HandleFunc("/report/", api.ReportSelectHandler)
 	mux.HandleFunc("/submit", api.SubmitReportHandler)
 

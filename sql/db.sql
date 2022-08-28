@@ -45,7 +45,7 @@ CREATE TABLE public.report (
 	CONSTRAINT report_fk_1 FOREIGN KEY (created_user_id) REFERENCES public.users(id)
 );
 CREATE INDEX report_name_idx ON public.report ("name");
-CREATE INDEX report_token_idx ON public.report (token);
+CREATE UNIQUE INDEX report_token_idx ON public.report (token);
 
 
 CREATE TABLE public.report_column (

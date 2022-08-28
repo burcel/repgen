@@ -45,9 +45,3 @@ After that, run the project by:
     - Report Column create & edit
     - Update token
 - Report data table index (report_date) performance
-- Update report token -> Invalidates every incoming report
-- Submit API
-    - Find column id
-    - column id -> value map
-    - Find date with respect to report interval
-    - If date exists -> update; else insert

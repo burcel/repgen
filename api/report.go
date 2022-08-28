@@ -8,6 +8,7 @@ import (
 	"repgen/controller"
 	"repgen/security"
 	"repgen/web"
+	"strings"
 	"time"
 )
 
@@ -274,6 +275,91 @@ func reportSelectParser(reportSelectInput ReportSelectInput) error {
 	// <page>
 	if reportSelectInput.Page < 0 {
 		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be lower than zero: page"}
+	}
+	return nil
+}
+
+type ReportRefreshTokenInput struct {
+	ReportId int `json:"report_id"`
+}
+
+func ReportRefreshTokenHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "POST":
+		// Parse session token from cookie
+		_, err := web.ParseCookieSession(r)
+		if err != nil {
+			log.Printf("{ReportRefreshTokenHandler} ERR: %s\n", err.Error())
+			var response *web.Response
+			if errors.As(err, &response) {
+				web.SendJsonResponse(w, response, response.Status)
+			} else {
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+			}
+			return
+		}
+		// Parse input
+		var reportRefreshTokenInput ReportRefreshTokenInput
+		err = web.ParsePostBody(w, r, &reportRefreshTokenInput)
+		if err != nil {
+			log.Printf("{ReportRefreshTokenHandler} ERR: %s\n", err.Error())
+			return
+		}
+		// Input validation
+		err = ReportRefreshTokenParser(reportRefreshTokenInput)
+		if err != nil {
+			log.Printf("{ReportRefreshTokenHandler} ERR: %s\n", err.Error())
+			var response *web.Response
+			if errors.As(err, &response) {
+				web.SendJsonResponse(w, response, response.Status)
+			} else {
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+			}
+			return
+		}
+		report := controller.Report{
+			Id: reportRefreshTokenInput.ReportId,
+		}
+		for {
+			// Generate token
+			report.Token, err = security.GenerateRandomHex(controller.ReportTokenLength)
+			if err != nil {
+				log.Printf("{ReportRefreshTokenHandler} ERR: %s\n", err.Error())
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+				return
+			}
+			// Update report token
+			rows, err := controller.UpdateReportToken(report)
+			if err != nil {
+				log.Printf("{ReportRefreshTokenHandler} ERR: %s\n", err.Error())
+				// Check uniqueness of the token
+				if strings.Contains(err.Error(), "(SQLSTATE 23505)") {
+					// This token exists in database -> Start over
+					continue
+				} else {
+					web.SendHttpMethod(w, http.StatusInternalServerError)
+					return
+				}
+			} else if rows != 1 {
+				// Update did not change any rows
+				response := web.Response{Message: "Invalid report id."}
+				web.SendJsonResponse(w, response, http.StatusBadRequest)
+				return
+			} else {
+				response := web.Response{Status: http.StatusOK, Message: "Report token is refreshed."}
+				web.SendJsonResponse(w, response, http.StatusOK)
+				return
+			}
+		}
+	default:
+		web.SendHttpMethod(w, http.StatusMethodNotAllowed)
+	}
+}
+
+func ReportRefreshTokenParser(reportRefreshTokenInput ReportRefreshTokenInput) error {
+	// <id>
+	if reportRefreshTokenInput.ReportId < 0 {
+		return &web.Response{Status: http.StatusBadRequest, Message: "Field cannot be lower than zero: report_id"}
 	}
 	return nil
 }
