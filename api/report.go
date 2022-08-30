@@ -60,42 +60,44 @@ func ReportCreateHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-		// Generate token
-		var token string
-		for {
-			token, err = security.GenerateRandomHex(controller.ReportTokenLength)
-			if err != nil {
-				log.Printf("{ReportCreateHandler} ERR: %s\n", err.Error())
-				web.SendHttpMethod(w, http.StatusInternalServerError)
-				return
-			}
-			tokenReport, err := controller.GetReportByToken(token)
-			if err != nil {
-				log.Printf("{ReportCreateHandler} ERR: %s\n", err.Error())
-				web.SendHttpMethod(w, http.StatusInternalServerError)
-				return
-			}
-			if tokenReport == nil {
-				// Token does not exist in database
-				break
-			}
-		}
 		// Create report
 		report := controller.Report{
 			ProjectId:     reportCreateInput.ProjectId,
 			Name:          reportCreateInput.Name,
 			Interval:      reportCreateInput.Interval,
-			Token:         token,
 			Description:   reportCreateInput.Description,
 			Created:       time.Now().UTC(),
 			CreatedUserId: userSession.UserId,
 		}
-		// Register report
-		err = controller.CreateReport(&report)
-		if err != nil {
-			log.Printf("{ReportCreateHandler} ERR: %s\n", err.Error())
-			web.SendHttpMethod(w, http.StatusInternalServerError)
-			return
+		// Create report
+		for {
+			// Generate token
+			report.Token, err = security.GenerateRandomHex(controller.ReportTokenLength)
+			if err != nil {
+				log.Printf("{ReportCreateHandler} ERR: %s\n", err.Error())
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+				return
+			}
+			// Register report
+			err = controller.CreateReport(&report)
+			if err != nil {
+				log.Printf("{ReportCreateHandler} ERR: %s\n", err.Error())
+				// Check uniqueness of the token
+				if strings.Contains(err.Error(), "(SQLSTATE 23505)") {
+					// This token exists in database -> Start over
+					continue
+				} else {
+					web.SendHttpMethod(w, http.StatusInternalServerError)
+					return
+				}
+			} else if report.Id == 0 {
+				// Insert is failed
+				log.Printf("{ReportCreateHandler} CreateReport is failed, report id is 0.\n")
+				web.SendHttpMethod(w, http.StatusInternalServerError)
+				return
+			} else {
+				break
+			}
 		}
 		// Create column definitions
 		report.Columns = make([]controller.ReportColumn, len(reportCreateInput.Definition))

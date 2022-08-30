@@ -38,6 +38,9 @@ After that, run the project by:
 
 # TODO
 
+- Report Select API
+    - Parse time interval
+    - Return report values
 - Logging
 - User authorization on APIs
 - Report history (Create & Edit) (User, time, column name etc.)

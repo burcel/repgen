@@ -137,7 +137,7 @@ func ProjectEditHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		} else if rows != 1 {
 			response := web.Response{Message: "Invalid project id."}
-			web.SendJsonResponse(w, response, http.StatusInternalServerError)
+			web.SendJsonResponse(w, response, http.StatusBadRequest)
 		} else {
 			response := web.Response{Message: "Project is updated."}
 			web.SendJsonResponse(w, response, http.StatusOK)
